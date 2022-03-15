@@ -240,8 +240,14 @@ log "🧩 Adding preseed parameters to kernel command line..."
 sed -i -e 's,file=/cdrom/preseed/ubuntu.seed maybe-ubiquity quiet splash,file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity quiet splash noprompt noshell,g' "$tmpdir/boot/grub/grub.cfg"
 sed -i -e 's,file=/cdrom/preseed/ubuntu.seed maybe-ubiquity iso-scan/filename=${iso_path} quiet splash,file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity quiet splash noprompt noshell,g' "$tmpdir/boot/grub/loopback.cfg"
 
-if [ $release_version == "FOCAL" ]
 # This one is used for BIOS mode
+txtcfgpath=""
+if [ $release_version == "FOCAL" ]
+        txtcfgpath="$tmpdir/isolinux/txt.cfg"
+else
+        txtcfgpath="/dev/null"
+fi
+
 cat <<EOF > "$tmpdir/isolinux/txt.cfg"
 default live-install
 label live-install
@@ -249,10 +255,6 @@ menu label ^Install Ubuntu
 kernel /casper/vmlinuz
 append  file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity initrd=/casper/initrd quiet splash noprompt noshell ---
 EOF
-else
-#NEED TO TRACK DOWN txt.cfg in newer than 20.04
-fi
-
 
 log "👍 Added parameters to UEFI and BIOS kernel command lines."
 
