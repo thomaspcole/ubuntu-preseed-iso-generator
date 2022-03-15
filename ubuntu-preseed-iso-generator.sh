@@ -81,10 +81,7 @@ function parse_params() {
                         release_version="${2-}"
                         shift
                         ;;
-                -a | --arm)
-                        use_arm=1
-                        shift
-                        ;;
+                -a | --arm) use_arm=1 ;;
                 -?*) die "Unknown option: $1" ;;
                 *) break ;;
                 esac
@@ -294,15 +291,27 @@ log "📦 Repackaging extracted files into an ISO image..."
 cd "$tmpdir"
 case $release_version in
         FOCAL)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_FOCAL} -o "${destination_iso}" . &>/dev/null
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
         ;;
 
         IMPISH)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_IMPISH} -o "${destination_iso}" . &>/dev/null
+        orig="$OLDPWD/${source_iso}"
+        mbr=$release_version.mbr
+        efi=$release_version.efi
+
+        # Extract the MBR template
+        dd if="$orig" bs=1 count=446 of="$mbr"
+
+        # Extract EFI partition image
+        skip=$(/sbin/fdisk -l "$orig" | fgrep '.iso2 ' | awk '{print $2}')
+        size=$(/sbin/fdisk -l "$orig" | fgrep '.iso2 ' | awk '{print $4}')
+        dd if="$orig" bs=512 skip="$skip" count="$size" of="$efi"
+
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -iso-level 3 -partition_offset 16 --grub2-mbr "$mbr" --mbr-force-bootable -append_partition2 0xEF "$efi" -appended_part_as_gpt -c /boot.catalog -b /boot/grub/i386-pc/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2:all::' -no-emul-boot -o "${destination_iso}" . &>/dev/null
         ;;
 
         JAMMY)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_JAMMY} -o "${destination_iso}" . &>/dev/null
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -o "${destination_iso}" . &>/dev/null
         ;;
 
         *) 
