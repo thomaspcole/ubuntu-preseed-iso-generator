@@ -150,15 +150,15 @@ if [ ! -f "${source_iso}" ]; then
         log "🌎 Downloading ISO image for ${release_version}"
          case $release_version in
                 FOCAL)
-                curl -NsSL "${BASE_FOCAL}/${X86_FOCAL}" -o "${source_iso}"
+                curl -NsSL "${BASE_FOCAL}${X86_FOCAL}" -o "${source_iso}"
                 ;;
 
                 IMPISH)
-                curl -NsSL "${BASE_IMPISH}/${X86_IMPISH}" -o "${source_iso}"
+                curl -NsSL "${BASE_IMPISH}${X86_IMPISH}" -o "${source_iso}"
                 ;;
 
                 JAMMY)
-                curl -NsSL "${BASE_JAMMY}/${X86_JAMMY}" -o "${source_iso}"
+                curl -NsSL "${BASE_JAMMY}${X86_JAMMY}" -o "${source_iso}"
                 ;;
 
                 *) 
@@ -240,14 +240,19 @@ log "🧩 Adding preseed parameters to kernel command line..."
 sed -i -e 's,file=/cdrom/preseed/ubuntu.seed maybe-ubiquity quiet splash,file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity quiet splash noprompt noshell,g' "$tmpdir/boot/grub/grub.cfg"
 sed -i -e 's,file=/cdrom/preseed/ubuntu.seed maybe-ubiquity iso-scan/filename=${iso_path} quiet splash,file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity quiet splash noprompt noshell,g' "$tmpdir/boot/grub/loopback.cfg"
 
+if [ $release_version == "FOCAL" ]
 # This one is used for BIOS mode
 cat <<EOF > "$tmpdir/isolinux/txt.cfg"
 default live-install
 label live-install
-  menu label ^Install Ubuntu
-  kernel /casper/vmlinuz
-  append  file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity initrd=/casper/initrd quiet splash noprompt noshell ---
+menu label ^Install Ubuntu
+kernel /casper/vmlinuz
+append  file=/cdrom/preseed/custom.seed auto=true priority=critical boot=casper automatic-ubiquity initrd=/casper/initrd quiet splash noprompt noshell ---
 EOF
+else
+#NEED TO TRACK DOWN txt.cfg in newer than 20.04
+fi
+
 
 log "👍 Added parameters to UEFI and BIOS kernel command lines."
 
@@ -266,7 +271,11 @@ log "👍 Updated hashes."
 
 log "📦 Repackaging extracted files into an ISO image..."
 cd "$tmpdir"
-xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
+if [ $release_version == "FOCAL" ]
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
+else
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b /boot/grub/i386-pc/eltorito.img -c /boot.catalog -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
+fi
 cd "$OLDPWD"
 log "👍 Repackaged into ${destination_iso}"
 
