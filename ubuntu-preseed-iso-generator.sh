@@ -57,6 +57,7 @@ function parse_params() {
         source_iso="" #${script_dir}/ubuntu-original-$today.iso"
         destination_iso="${script_dir}/ubuntu-preseed-$today.iso"
         release_version=""
+        use_arm=0
         gpg_verify=1
 
         while :; do
@@ -80,6 +81,10 @@ function parse_params() {
                         release_version="${2-}"
                         shift
                         ;;
+                -a | --arm)
+                        use_arm=1
+                        shift
+                        ;;
                 -?*) die "Unknown option: $1" ;;
                 *) break ;;
                 esac
@@ -92,24 +97,30 @@ function parse_params() {
         [[ -z "${preseed_file}" ]] && die "💥 preseed file was not specified."
         [[ ! -f "$preseed_file" ]] && die "💥 preseed file could not be found."
 
-        #Ignore check of source iso matching current daily. 
-        # if [ "${source_iso}" != "${script_dir}/ubuntu-original-$today.iso" ]; then
-        #         [[ ! -f "${source_iso}" ]] && die "💥 Source ISO file could not be found."
-        # fi
-
         [[ -z "${release_version}" ]] && die "💥 release version was not specified."
 
         case $release_version in
                 FOCAL)
-                source_iso="${script_dir}/focal-original.iso"
+                if [ ${use_arm} -eq 1 ]; then
+                        source_iso="${script_dir}/focal-original-ARM.iso"
+                else
+                        source_iso="${script_dir}/focal-original-X86.iso"
+                fi
                 ;;
 
                 IMPISH)
-                source_iso="${script_dir}/impish-original.iso"
+                if [ ${use_arm} -eq 1 ]; then
+                        log "⚠️ No arm build for this version. Using X86"
+                fi
+                source_iso="${script_dir}/impish-original-X86.iso"
                 ;;
 
                 JAMMY)
-                source_iso="${script_dir}/jammy-original.iso"
+                if [ ${use_arm} -eq 1 ]; then
+                        source_iso="${script_dir}/jammy-original-ARM.iso"
+                else
+                        source_iso="${script_dir}/jammy-original-X86.iso"
+                fi                
                 ;;
 
                 *) 
@@ -150,15 +161,23 @@ if [ ! -f "${source_iso}" ]; then
         log "🌎 Downloading ISO image for ${release_version}"
          case $release_version in
                 FOCAL)
-                curl -NsSL "${BASE_FOCAL}${X86_FOCAL}" -o "${source_iso}"
+                if [ ${use_arm} -eq 1 ]; then
+                        curl -NsSL "${BASE_FOCAL}${ARM_FOCAL}" -o "${source_iso}"
+                else
+                        curl -NsSL "${BASE_FOCAL}${X86_FOCAL}" -o "${source_iso}"
+                fi
                 ;;
 
                 IMPISH)
                 curl -NsSL "${BASE_IMPISH}${X86_IMPISH}" -o "${source_iso}"
                 ;;
-
+                
                 JAMMY)
-                curl -NsSL "${BASE_JAMMY}${X86_JAMMY}" -o "${source_iso}"
+                if [ ${use_arm} -eq 1 ]; then
+                        curl -NsSL "${BASE_JAMMY}${ARM_JAMMY}" -o "${source_iso}"
+                else
+                        curl -NsSL "${BASE_JAMMY}${X86_JAMMY}" -o "${source_iso}"
+                fi                
                 ;;
 
                 *) 
@@ -276,7 +295,7 @@ cd "$tmpdir"
 if [ $release_version == "FOCAL" ]; then
         xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
 else
-        xorriso -as mkisofs -V "ubuntu-preseed-$today" --grub2-mbr --interval:local_fs:0s-15s:zero_mbrpt,zero_gpt:"$OLDPWD/jammy-original.iso" --protective-msdos-label -partition_cyl_align off -partition_offset 16 --mbr-force-bootable -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b --interval:local_fs:6757156d-6765659d::"$OLDPWD/jammy-original.iso" -part_like_isohybrid -iso_mbr_part_type a2a0d0ebe5b9334487c068b6b72699c7 -c '/boot.catalog' -b '/boot/grub/i386-pc/eltorito.img' -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2_start_1689289s_size_8504d:all::' -no-emul-boot -boot-load-size 8504 -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
+        xorriso -as mkisofs -V "ubuntu-preseed-$today" --grub2-mbr --interval:local_fs:0s-15s:zero_mbrpt,zero_gpt:"$OLDPWD/jammy-original-X86.iso" --protective-msdos-label -partition_cyl_align off -partition_offset 16 --mbr-force-bootable -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b --interval:local_fs:6757156d-6765659d::"$OLDPWD/jammy-original-X86.iso" -part_like_isohybrid -iso_mbr_part_type a2a0d0ebe5b9334487c068b6b72699c7 -c '/boot.catalog' -b '/boot/grub/i386-pc/eltorito.img' -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2_start_1689289s_size_8504d:all::' -no-emul-boot -boot-load-size 8504 -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
 fi
 cd "$OLDPWD"
 log "👍 Repackaged into ${destination_iso}"
