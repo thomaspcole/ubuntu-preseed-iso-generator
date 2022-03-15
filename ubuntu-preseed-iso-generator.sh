@@ -292,11 +292,23 @@ log "👍 Updated hashes."
 
 log "📦 Repackaging extracted files into an ISO image..."
 cd "$tmpdir"
-if [ $release_version == "FOCAL" ]; then
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -J -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin -boot-info-table -input-charset utf-8 -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
-else
-        xorriso -as mkisofs -V "ubuntu-preseed-$today" --grub2-mbr --interval:local_fs:0s-15s:zero_mbrpt,zero_gpt:"$OLDPWD/jammy-original-X86.iso" --protective-msdos-label -partition_cyl_align off -partition_offset 16 --mbr-force-bootable -append_partition 2 28732ac11ff8d211ba4b00a0c93ec93b --interval:local_fs:6757156d-6765659d::"$OLDPWD/jammy-original-X86.iso" -part_like_isohybrid -iso_mbr_part_type a2a0d0ebe5b9334487c068b6b72699c7 -c '/boot.catalog' -b '/boot/grub/i386-pc/eltorito.img' -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2_start_1689289s_size_8504d:all::' -no-emul-boot -boot-load-size 8504 -isohybrid-gpt-basdat -o "${destination_iso}" . &>/dev/null
-fi
+case $release_version in
+        FOCAL)
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_FOCAL}
+        ;;
+
+        IMPISH)
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_IMPISH}
+        ;;
+
+        JAMMY)
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_JAMMY}
+        ;;
+
+        *) 
+        die "💥 Invalid release version."
+        ;;
+esac
 cd "$OLDPWD"
 log "👍 Repackaged into ${destination_iso}"
 
