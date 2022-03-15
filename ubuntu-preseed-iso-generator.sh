@@ -150,23 +150,21 @@ if [ ! -f "${source_iso}" ]; then
         log "🌎 Downloading ISO image for ${release_version}"
          case $release_version in
                 FOCAL)
-                curl -NsSL "${X86_FOCAL}" -o "${source_iso}"
+                curl -NsSL "${BASE_FOCAL}/${X86_FOCAL}" -o "${source_iso}"
                 ;;
 
                 IMPISH)
-                curl -NsSL "${X86_IMPISH}" -o "${source_iso}"
+                curl -NsSL "${BASE_IMPISH}/${X86_IMPISH}" -o "${source_iso}"
                 ;;
 
                 JAMMY)
-                curl -NsSL "${X86_JAMMY}" -o "${source_iso}"
+                curl -NsSL "${BASE_JAMMY}/${X86_JAMMY}" -o "${source_iso}"
                 ;;
 
                 *) 
                 die "💥 Invalid release version."
                 ;;
         esac
-        
-        #curl -NsSL "https://cdimage.ubuntu.com/focal/daily-live/current/focal-desktop-amd64.iso" -o "${source_iso}"
         log "👍 Downloaded and saved to ${source_iso}"
 else
         log "☑️ Using existing ${source_iso} file."
