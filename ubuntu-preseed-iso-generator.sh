@@ -294,15 +294,15 @@ log "📦 Repackaging extracted files into an ISO image..."
 cd "$tmpdir"
 case $release_version in
         FOCAL)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_FOCAL}
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_FOCAL} -o "${destination_iso}" . &>/dev/null
         ;;
 
         IMPISH)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_IMPISH}
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_IMPISH} -o "${destination_iso}" . &>/dev/null
         ;;
 
         JAMMY)
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_JAMMY}
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" ${XORRISOARGS_JAMMY} -o "${destination_iso}" . &>/dev/null
         ;;
 
         *) 
