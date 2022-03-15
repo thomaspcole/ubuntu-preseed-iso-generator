@@ -44,6 +44,7 @@ Available options:
 -s, --source        Source ISO file. By default the latest daily ISO for Ubuntu 20.04 will be downloaded
                     and saved as ${script_dir}/ubuntu-original-$today.iso
                     That file will be used by default if it already exists.
+-r, --release       Specify the Ubuntu version you would like to use. FOCAL (20.04), IMPISH (21.10), or JAMMY (22.04)
 -d, --destination   Destination ISO file. By default ${script_dir}/ubuntu-preseed-$today.iso will be
                     created, overwriting any existing file.
 EOF
@@ -53,8 +54,9 @@ EOF
 function parse_params() {
         # default values of variables set from params
         preseed_file=""
-        source_iso="${script_dir}/ubuntu-original-$today.iso"
+        source_iso="" #${script_dir}/ubuntu-original-$today.iso"
         destination_iso="${script_dir}/ubuntu-preseed-$today.iso"
+        release_version=""
         gpg_verify=1
 
         while :; do
@@ -74,6 +76,10 @@ function parse_params() {
                         destination_iso="${2-}"
                         shift
                         ;;
+                -r | --release)
+                        release_version="${2-}"
+                        shift
+                        ;;
                 -?*) die "Unknown option: $1" ;;
                 *) break ;;
                 esac
@@ -86,9 +92,30 @@ function parse_params() {
         [[ -z "${preseed_file}" ]] && die "💥 preseed file was not specified."
         [[ ! -f "$preseed_file" ]] && die "💥 preseed file could not be found."
 
-        if [ "${source_iso}" != "${script_dir}/ubuntu-original-$today.iso" ]; then
-                [[ ! -f "${source_iso}" ]] && die "💥 Source ISO file could not be found."
-        fi
+        #Ignore check of source iso matching current daily. 
+        # if [ "${source_iso}" != "${script_dir}/ubuntu-original-$today.iso" ]; then
+        #         [[ ! -f "${source_iso}" ]] && die "💥 Source ISO file could not be found."
+        # fi
+
+        [[ -z "${release_version}" ]] && die "💥 release version was not specified."
+
+        case $release_version in
+                FOCAL)
+                source_iso="${script_dir}/focal-original.iso"
+                ;;
+
+                IMPISH)
+                source_iso="${script_dir}/impish-original.iso"
+                ;;
+
+                JAMMY)
+                source_iso="${script_dir}/jammy-original.iso"
+                ;;
+
+                *) 
+                die "💥 Invalid release version."
+                ;;
+        esac
 
         destination_iso=$(realpath "${destination_iso}")
         source_iso=$(realpath "${source_iso}")
@@ -97,6 +124,9 @@ function parse_params() {
 }
 
 ubuntu_gpg_key_id="843938DF228D22F7B3742BC0D94AA3F0EFE21092"
+
+#import config file for sources
+source "${script_dir}/versions.cfg"
 
 parse_params "$@"
 
@@ -117,8 +147,26 @@ log "🔎 Checking for required utilities..."
 log "👍 All required utilities are installed."
 
 if [ ! -f "${source_iso}" ]; then
-        log "🌎 Downloading current daily ISO image for Ubuntu 20.04 Focal Fossa..."
-        curl -NsSL "https://cdimage.ubuntu.com/focal/daily-live/current/focal-desktop-amd64.iso" -o "${source_iso}"
+        log "🌎 Downloading ISO image for ${release_version}"
+         case $release_version in
+                FOCAL)
+                curl -NsSL "${X86_FOCAL}" -o "${source_iso}"
+                ;;
+
+                IMPISH)
+                curl -NsSL "${X86_IMPISH}" -o "${source_iso}"
+                ;;
+
+                JAMMY)
+                curl -NsSL "${X86_JAMMY}" -o "${source_iso}"
+                ;;
+
+                *) 
+                die "💥 Invalid release version."
+                ;;
+        esac
+        
+        #curl -NsSL "https://cdimage.ubuntu.com/focal/daily-live/current/focal-desktop-amd64.iso" -o "${source_iso}"
         log "👍 Downloaded and saved to ${source_iso}"
 else
         log "☑️ Using existing ${source_iso} file."
@@ -130,13 +178,29 @@ else
 fi
 
 if [ ${gpg_verify} -eq 1 ]; then
-        if [ ! -f "${script_dir}/SHA256SUMS-${today}" ]; then
-                log "🌎 Downloading SHA256SUMS & SHA256SUMS.gpg files..."
-                curl -NsSL "https://cdimage.ubuntu.com/focal/daily-live/current/SHA256SUMS" -o "${script_dir}/SHA256SUMS-${today}"
-                curl -NsSL "https://cdimage.ubuntu.com/focal/daily-live/current/SHA256SUMS.gpg" -o "${script_dir}/SHA256SUMS-${today}.gpg"
-        else
-                log "☑️ Using existing SHA256SUMS-${today} & SHA256SUMS-${today}.gpg files."
-        fi
+        log "🌎 Downloading SHA256SUMS & SHA256SUMS.gpg files..."
+
+        case $release_version in
+                FOCAL)
+                curl -NsSL "${BASE_FOCAL}/SHA256SUMS" -o "${script_dir}/SHA256SUMS"
+                curl -NsSL "${BASE_FOCAL}/SHA256SUMS.gpg" -o "${script_dir}/SHA256SUMS.gpg"
+                ;;
+
+                IMPISH)
+                curl -NsSL "${BASE_IMPISH}/SHA256SUMS" -o "${script_dir}/SHA256SUMS"
+                curl -NsSL "${BASE_IMPISH}/SHA256SUMS.gpg" -o "${script_dir}/SHA256SUMS.gpg"
+                ;;
+
+                JAMMY)
+                curl -NsSL "${BASE_JAMMY}/SHA256SUMS" -o "${script_dir}/SHA256SUMS"
+                curl -NsSL "${BASE_JAMMY}/SHA256SUMS.gpg" -o "${script_dir}/SHA256SUMS.gpg"
+                ;;
+
+                *) 
+                die "💥 Invalid release version."
+                ;;
+        esac
+
 
         if [ ! -f "${script_dir}/${ubuntu_gpg_key_id}.keyring" ]; then
                 log "🌎 Downloading and saving Ubuntu signing key..."
