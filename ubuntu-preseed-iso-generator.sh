@@ -296,8 +296,8 @@ case $release_version in
 
         IMPISH)
         orig="${source_iso}"
-        mbr=$release_version.mbr
-        efi=$release_version.efi
+        mbr=$OLDPWD/$release_version.mbr
+        efi=$OLDPWD/$release_version.efi
 
         # Extract the MBR template
         dd if="$orig" bs=1 count=446 of="$mbr"
@@ -307,7 +307,7 @@ case $release_version in
         size=$(/sbin/fdisk -l "$orig" | fgrep '.iso2 ' | awk '{print $4}')
         dd if="$orig" bs=512 skip="$skip" count="$size" of="$efi"
 
-        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -iso-level 3 -partition_offset 16 --grub2-mbr "$mbr" --mbr-force-bootable -append_partition2 0xEF "$efi" -appended_part_as_gpt -c /boot.catalog -b /boot/grub/i386-pc/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2:all::' -no-emul-boot -o "${destination_iso}" . &>/dev/null
+        xorriso -as mkisofs -r -V "ubuntu-preseed-$today" -iso-level 3 -partition_offset 16 --grub2-mbr "$mbr" --mbr-force-bootable -append_partition 2 0xEF "$efi" -appended_part_as_gpt -c /boot.catalog -b /boot/grub/i386-pc/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table --grub2-boot-info -eltorito-alt-boot -e '--interval:appended_partition_2:all::' -no-emul-boot -o "${destination_iso}" . &>/dev/null
         ;;
 
         JAMMY)
