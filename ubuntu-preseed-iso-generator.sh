@@ -295,7 +295,7 @@ case $release_version in
         ;;
 
         IMPISH)
-        orig="$OLDPWD/${source_iso}"
+        orig="${source_iso}"
         mbr=$release_version.mbr
         efi=$release_version.efi
 
