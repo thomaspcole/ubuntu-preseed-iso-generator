@@ -209,7 +209,7 @@ if [ ${gpg_verify} -eq 1 ]; then
         fi
 
         log "🔐 Verifying ${source_iso} integrity and authenticity..."
-        gpg -q --keyring "${script_dir}/${ubuntu_gpg_key_id}.keyring" --verify "${script_dir}/SHA256SUMS-${today}.gpg" "${script_dir}/SHA256SUMS-${today}" 2>/dev/null
+        gpg -q --keyring "${script_dir}/${ubuntu_gpg_key_id}.keyring" --verify "${script_dir}/SHA256SUMS.gpg" "${script_dir}/SHA256SUMS" 2>/dev/null
         if [ $? -ne 0 ]; then
                 rm -f "${script_dir}/${ubuntu_gpg_key_id}.keyring~"
                 die "👿 Verification of SHA256SUMS signature failed."
@@ -218,7 +218,7 @@ if [ ${gpg_verify} -eq 1 ]; then
         rm -f "${script_dir}/${ubuntu_gpg_key_id}.keyring~"
         digest=$(sha256sum "${source_iso}" | cut -f1 -d ' ')
         set +e
-        grep -Fq "$digest" "${script_dir}/SHA256SUMS-${today}"
+        grep -Fq "$digest" "${script_dir}/SHA256SUMS"
         if [ $? -eq 0 ]; then
                 log "👍 Verification succeeded."
                 set -e
